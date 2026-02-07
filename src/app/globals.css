@@ -1,0 +1,33 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 220 20% 97%;
+    --foreground: 220 25% 10%;
+    --primary: 262 55% 45%;
+    --primary-foreground: 0 0% 100%;
+    --muted: 220 15% 92%;
+    --muted-foreground: 220 10% 45%;
+    --accent: 262 40% 92%;
+    --accent-foreground: 262 55% 35%;
+  }
+
+  .dark {
+    --background: 220 25% 8%;
+    --foreground: 220 15% 95%;
+    --primary: 262 55% 55%;
+    --primary-foreground: 0 0% 100%;
+    --muted: 220 20% 15%;
+    --muted-foreground: 220 10% 60%;
+    --accent: 262 30% 18%;
+    --accent-foreground: 262 55% 75%;
+  }
+}
+
+@layer base {
+  body {
+    @apply antialiased;
+  }
+}
