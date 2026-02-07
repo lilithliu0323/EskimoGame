@@ -9,7 +9,14 @@
 - **Next.js 14** (App Router)
 - **Tailwind CSS**
 - **Framer Motion**
-- **OpenAI API** (可选)
+- **OpenAI API** / **Google Gemini API** (可选)
+
+## 算命方式
+
+- 🃏 **塔罗牌**：抽取牌面，解读当下能量与指引
+- 📿 **八字**：生辰八字，五行命理解读
+- ✨ **星座**：星盘运势，当下阶段解读
+- 🌟 **紫薇星数**：紫薇斗数，命盘格局分析
 
 ## 快速开始
 
@@ -28,19 +35,22 @@ npm run dev
 复制 `.env.example` 为 `.env` 并配置：
 
 ```env
-# 可选：配置 OpenAI API Key 后使用真实 AI 解读
-# 不配置时使用内置示例回复
+# Gemini 优先（若两者都配置）
+GEMINI_API_KEY=xxx
+GEMINI_MODEL=gemini-1.5-flash
+
+# OpenAI 备选
 OPENAI_API_KEY=sk-xxx
 OPENAI_MODEL=gpt-4o-mini
 ```
 
-不配置 `OPENAI_API_KEY` 时，将使用设计文档中的示例回复。
+不配置时使用内置示例回复。
 
 ## 产品流程
 
-1. **首页** → 选择场景（情感 / 事业 / 人生低谷）
-2. **输入页** → 描述当下状态、可选出生日期
-3. **结果页** → 分段展示：共情（免费）→ 运势解读（部分免费）→ 行动建议（付费解锁）
+1. **首页** → 选择算命方式（塔罗 / 八字 / 星座 / 紫薇）
+2. **输入页** → 选择场景 + 描述状态 + 按需填写出生信息
+3. **结果页** → 分段展示：共情 → 运势解读 → 行动建议
 
 ## 项目结构
 
@@ -80,8 +90,8 @@ src/
 3. **配置项目**
    - Framework Preset 默认已识别为 Next.js，无需修改
    - 如需 AI 解读，在 **Environment Variables** 中添加：
-     - `OPENAI_API_KEY`：你的 OpenAI API Key
-     - `OPENAI_MODEL`：`gpt-4o-mini`（可选）
+     - `GEMINI_API_KEY` 或 `OPENAI_API_KEY`
+     - `GEMINI_MODEL` / `OPENAI_MODEL`（可选）
 
 4. **部署**
    - 点击 **Deploy**，等待构建完成

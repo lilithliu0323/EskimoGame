@@ -2,30 +2,39 @@ import { NextRequest, NextResponse } from "next/server";
 import { v4 as uuidv4 } from "uuid";
 import { generateFortune } from "@/lib/ai";
 import { saveFortune } from "@/lib/store";
-import type { SceneId } from "@/lib/fortune";
+import type { SceneId, FortuneTypeId } from "@/lib/fortune";
+
+const VALID_SCENES: SceneId[] = ["emotion", "career", "low"];
+const VALID_TYPES: FortuneTypeId[] = ["tarot", "bazi", "constellation", "ziwei"];
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { scene, description, birthDate, extra } = body;
+    const { type, scene, description, birthDate, birthTime, gender, extra } =
+      body;
 
-    if (!scene || !description?.trim()) {
+    if (!type || !scene || !description?.trim()) {
       return NextResponse.json(
-        { error: "缺少 scene 或 description" },
+        { error: "缺少 type、scene 或 description" },
         { status: 400 }
       );
     }
 
-    const validScenes: SceneId[] = ["emotion", "career", "low"];
-    if (!validScenes.includes(scene)) {
+    if (!VALID_TYPES.includes(type)) {
+      return NextResponse.json({ error: "无效的 type" }, { status: 400 });
+    }
+    if (!VALID_SCENES.includes(scene)) {
       return NextResponse.json({ error: "无效的 scene" }, { status: 400 });
     }
 
     const sessionId = uuidv4();
     const content = await generateFortune({
+      type,
       scene,
       description: description.trim(),
       birthDate: birthDate || undefined,
+      birthTime: birthTime || undefined,
+      gender: gender || undefined,
       extra: extra?.trim() || undefined,
     });
 
@@ -33,7 +42,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       sessionId,
-      freeContent: {
+      content: {
         empathy: content.empathy,
         narrative: content.narrative,
         suggestions: content.suggestions,

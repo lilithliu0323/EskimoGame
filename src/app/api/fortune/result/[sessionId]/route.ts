@@ -6,14 +6,11 @@ export async function GET(
   { params }: { params: Promise<{ sessionId: string }> }
 ) {
   const { sessionId } = await params;
-  const entry = getFortune(sessionId);
+  const content = getFortune(sessionId);
 
-  if (!entry) {
+  if (!content) {
     return NextResponse.json({ error: "解读不存在或已过期" }, { status: 404 });
   }
 
-  return NextResponse.json({
-    content: entry.content,
-    isUnlocked: entry.unlocked,
-  });
+  return NextResponse.json({ content });
 }

@@ -4,7 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Lock, Sparkles } from "lucide-react";
+import { ArrowLeft, Sparkles } from "lucide-react";
 import type { FortuneContent } from "@/lib/fortune";
 
 export default function ResultPage() {
@@ -13,9 +13,7 @@ export default function ResultPage() {
   const sessionId = params.sessionId as string;
 
   const [content, setContent] = useState<FortuneContent | null>(null);
-  const [isUnlocked, setIsUnlocked] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [unlockLoading, setUnlockLoading] = useState(false);
   const [showEmpathy, setShowEmpathy] = useState(false);
   const [showNarrative, setShowNarrative] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -29,7 +27,6 @@ export default function ResultPage() {
       })
       .then((data) => {
         setContent(data.content);
-        setIsUnlocked(data.isUnlocked);
         setShowEmpathy(true);
       })
       .catch(() => router.push("/"))
@@ -38,34 +35,15 @@ export default function ResultPage() {
 
   useEffect(() => {
     if (!showEmpathy) return;
-    const t = setTimeout(() => setShowNarrative(true), 1200);
+    const t = setTimeout(() => setShowNarrative(true), 800);
     return () => clearTimeout(t);
   }, [showEmpathy]);
 
   useEffect(() => {
-    if (!showNarrative || !isUnlocked) return;
-    const t = setTimeout(() => setShowSuggestions(true), 800);
+    if (!showNarrative) return;
+    const t = setTimeout(() => setShowSuggestions(true), 600);
     return () => clearTimeout(t);
-  }, [showNarrative, isUnlocked]);
-
-  const handleUnlock = async () => {
-    setUnlockLoading(true);
-    try {
-      const res = await fetch("/api/fortune/unlock", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error);
-      setIsUnlocked(true);
-      setShowSuggestions(true);
-    } catch {
-      setUnlockLoading(false);
-    } finally {
-      setUnlockLoading(false);
-    }
-  };
+  }, [showNarrative]);
 
   if (loading) {
     return (
@@ -103,7 +81,6 @@ export default function ResultPage() {
         </motion.div>
 
         <div className="space-y-8">
-          {/* 共情段 - 免费 */}
           <AnimatePresence>
             {showEmpathy && (
               <motion.section
@@ -122,7 +99,6 @@ export default function ResultPage() {
             )}
           </AnimatePresence>
 
-          {/* 运势叙事段 - 部分免费 + 解锁 */}
           <AnimatePresence>
             {showNarrative && (
               <motion.section
@@ -134,37 +110,15 @@ export default function ResultPage() {
                 <h3 className="mb-3 text-sm font-medium text-indigo-600">
                   运势解读
                 </h3>
-                {isUnlocked ? (
-                  <p className="leading-relaxed text-slate-700">
-                    {content.narrative}
-                  </p>
-                ) : (
-                  <>
-                    <p className="leading-relaxed text-slate-700 line-clamp-3">
-                      {content.narrative}
-                    </p>
-                    <div className="mt-4 flex items-center justify-between gap-4 rounded-xl bg-slate-50 p-4">
-                      <div className="flex items-center gap-2 text-slate-500">
-                        <Lock className="h-4 w-4" />
-                        <span className="text-sm">完整解读已折叠</span>
-                      </div>
-                      <button
-                        onClick={handleUnlock}
-                        disabled={unlockLoading}
-                        className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-70"
-                      >
-                        {unlockLoading ? "解锁中…" : "¥9.9 解锁完整解读"}
-                      </button>
-                    </div>
-                  </>
-                )}
+                <p className="leading-relaxed text-slate-700">
+                  {content.narrative}
+                </p>
               </motion.section>
             )}
           </AnimatePresence>
 
-          {/* 建议段 - 付费后展示 */}
           <AnimatePresence>
-            {(isUnlocked ? showSuggestions : false) && (
+            {showSuggestions && (
               <motion.section
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -172,7 +126,7 @@ export default function ResultPage() {
                 className="rounded-2xl border border-indigo-100 bg-indigo-50/50 p-6"
               >
                 <h3 className="mb-3 text-sm font-medium text-indigo-600">
-                  专属行动建议
+                  行动建议
                 </h3>
                 <div className="whitespace-pre-wrap leading-relaxed text-slate-700">
                   {content.suggestions}
@@ -180,33 +134,6 @@ export default function ResultPage() {
               </motion.section>
             )}
           </AnimatePresence>
-
-          {/* 未解锁时的建议段引导 */}
-          {showNarrative && !isUnlocked && (
-            <motion.section
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="rounded-2xl border border-dashed border-indigo-200 bg-indigo-50/30 p-6"
-            >
-              <div className="flex flex-col items-center gap-4 text-center sm:flex-row sm:justify-between">
-                <div>
-                  <p className="font-medium text-slate-700">
-                    获取专属行动建议
-                  </p>
-                  <p className="mt-1 text-sm text-slate-500">
-                    2~3 条可执行的小事，帮你迈出第一步
-                  </p>
-                </div>
-                <button
-                  onClick={handleUnlock}
-                  disabled={unlockLoading}
-                  className="shrink-0 rounded-xl bg-indigo-600 px-5 py-2.5 font-medium text-white hover:bg-indigo-700 disabled:opacity-70"
-                >
-                  {unlockLoading ? "解锁中…" : "¥9.9 解锁完整版"}
-                </button>
-              </div>
-            </motion.section>
-          )}
         </div>
       </div>
     </main>

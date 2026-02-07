@@ -1,5 +1,18 @@
 import type { FortuneInput, FortuneContent } from "./fortune";
 
+const SCENE_LABELS: Record<string, string> = {
+  emotion: "情感困惑",
+  career: "事业迷茫",
+  low: "人生低谷",
+};
+
+const TYPE_LABELS: Record<string, string> = {
+  tarot: "塔罗牌",
+  bazi: "八字",
+  constellation: "星座",
+  ziwei: "紫薇星数",
+};
+
 const MOCK_RESPONSES: Record<string, FortuneContent> = {
   emotion: {
     empathy:
@@ -27,7 +40,7 @@ const MOCK_RESPONSES: Record<string, FortuneContent> = {
   },
 };
 
-const SYSTEM_PROMPT = `你是一名温和、共情的「人生阶段解读师」，擅长用叙事疗法和心理学视角帮用户理解当下状态。你的输出必须分段，且遵循以下格式：
+const BASE_SYSTEM_PROMPT = `你是一名温和、共情的「人生阶段解读师」，擅长用叙事疗法和心理学视角帮用户理解当下状态。你的输出必须分段，且遵循以下格式：
 
 【共情段】
 - 必须引用用户原话中的关键描述（至少 1 句）
@@ -48,6 +61,29 @@ const SYSTEM_PROMPT = `你是一名温和、共情的「人生阶段解读师」
 请直接输出三段内容，用以下 JSON 格式，不要有 markdown 代码块包裹：
 {"empathy":"共情段内容","narrative":"运势叙事段内容","suggestions":"建议段内容，每条用换行分隔，格式如 1. xxx\\n2. xxx"}`;
 
+const TYPE_PROMPT_ADDONS: Record<string, string> = {
+  tarot: `
+【塔罗牌解读风格】
+- 结合塔罗的象征意义，用「牌面」「意象」「能量」等词汇
+- 侧重当下的内在状态与潜在可能，而非预测
+- 可提及「抽牌」「牌意」等作为叙事载体，但保持共情主线`,
+  bazi: `
+【八字解读风格】
+- 结合生辰、五行、十神等概念，用「命局」「流年」「能量」等词汇
+- 侧重当下的能量走向与阶段解读，而非宿命论
+- 可提及「五行」「格局」等，但用通俗语言解释`,
+  constellation: `
+【星座解读风格】
+- 结合星象、星座特质，用「星象」「运势」「当下阶段」等词汇
+- 侧重当下的情绪与行动参考，而非绝对预测
+- 可提及「守护星」「元素」等，但保持轻松易懂`,
+  ziwei: `
+【紫薇斗数解读风格】
+- 结合命盘、星曜，用「命宫」「运势」「格局」等词汇
+- 侧重当下的阶段解读与能量脉络，而非宿命
+- 可提及「主星」「化禄」等，但用通俗语言解释`,
+};
+
 function parseAIResponse(text: string): FortuneContent {
   try {
     const cleaned = text.replace(/```json\n?|\n?```/g, "").trim();
@@ -67,38 +103,91 @@ function parseAIResponse(text: string): FortuneContent {
   }
 }
 
-export async function generateFortune(input: FortuneInput): Promise<FortuneContent> {
-  const apiKey = process.env.OPENAI_API_KEY;
-
-  if (!apiKey) {
-    const mock = MOCK_RESPONSES[input.scene] || MOCK_RESPONSES.low;
-    await new Promise((r) => setTimeout(r, 1500 + Math.random() * 1000));
-    return mock;
-  }
-
-  const userPrompt = `用户输入：
-- 场景：${input.scene === "emotion" ? "情感困惑" : input.scene === "career" ? "事业迷茫" : "人生低谷"}
+function buildUserPrompt(input: FortuneInput): string {
+  let prompt = `用户输入：
+- 算命方式：${TYPE_LABELS[input.type] || input.type}
+- 场景：${SCENE_LABELS[input.scene] || input.scene}
 - 描述：${input.description}
-${input.extra ? `- 补充：${input.extra}` : ""}
-${input.birthDate ? `- 出生日期：${input.birthDate}` : ""}`;
+`;
+  if (input.birthDate) prompt += `- 出生日期：${input.birthDate}\n`;
+  if (input.birthTime) prompt += `- 出生时辰：${input.birthTime}\n`;
+  if (input.gender) prompt += `- 性别：${input.gender === "male" ? "男" : "女"}\n`;
+  if (input.extra) prompt += `- 补充：${input.extra}\n`;
+  return prompt;
+}
 
-  const { default: OpenAI } = await import("openai");
-  const openai = new OpenAI({ apiKey });
+async function callGemini(input: FortuneInput): Promise<FortuneContent | null> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return null;
 
-  const completion = await openai.chat.completions.create({
-    model: process.env.OPENAI_MODEL || "gpt-4o-mini",
-    messages: [
-      { role: "system", content: SYSTEM_PROMPT },
-      { role: "user", content: userPrompt },
-    ],
-    temperature: 0.8,
-  });
+  const systemPrompt =
+    BASE_SYSTEM_PROMPT + (TYPE_PROMPT_ADDONS[input.type] || "");
 
-  const content = completion.choices[0]?.message?.content;
-  if (!content) {
-    const fallback = MOCK_RESPONSES[input.scene] || MOCK_RESPONSES.low;
-    return fallback;
+  try {
+    const { GoogleGenerativeAI } = await import("@google/generative-ai");
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const model = genAI.getGenerativeModel({
+      model: process.env.GEMINI_MODEL || "gemini-1.5-flash",
+      generationConfig: {
+        temperature: 0.8,
+      },
+    });
+
+    const result = await model.generateContent(
+      `${systemPrompt}\n\n${buildUserPrompt(input)}\n\n请严格按 JSON 格式输出。`
+    );
+    const response = result.response;
+    const text = response.text();
+    if (!text) return null;
+    return parseAIResponse(text);
+  } catch (e) {
+    console.error("Gemini error:", e);
+    return null;
+  }
+}
+
+async function callOpenAI(input: FortuneInput): Promise<FortuneContent | null> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) return null;
+
+  const systemPrompt =
+    BASE_SYSTEM_PROMPT + (TYPE_PROMPT_ADDONS[input.type] || "");
+
+  try {
+    const { default: OpenAI } = await import("openai");
+    const openai = new OpenAI({ apiKey });
+    const completion = await openai.chat.completions.create({
+      model: process.env.OPENAI_MODEL || "gpt-4o-mini",
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: buildUserPrompt(input) },
+      ],
+      temperature: 0.8,
+    });
+
+    const content = completion.choices[0]?.message?.content;
+    if (!content) return null;
+    return parseAIResponse(content);
+  } catch (e) {
+    console.error("OpenAI error:", e);
+    return null;
+  }
+}
+
+export async function generateFortune(input: FortuneInput): Promise<FortuneContent> {
+  const mock = MOCK_RESPONSES[input.scene] || MOCK_RESPONSES.low;
+
+  let result: FortuneContent | null = null;
+
+  if (process.env.GEMINI_API_KEY) {
+    result = await callGemini(input);
+  }
+  if (!result && process.env.OPENAI_API_KEY) {
+    result = await callOpenAI(input);
   }
 
-  return parseAIResponse(content);
+  if (result) return result;
+
+  await new Promise((r) => setTimeout(r, 1500 + Math.random() * 1000));
+  return mock;
 }

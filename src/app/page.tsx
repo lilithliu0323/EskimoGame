@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
-import { SCENES } from "@/lib/fortune";
+import { FORTUNE_TYPES } from "@/lib/fortune";
 
 export default function HomePage() {
   return (
@@ -26,12 +26,12 @@ export default function HomePage() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.2 }}
-          className="mt-14 grid gap-4 sm:grid-cols-3"
+          className="mt-14 grid gap-4 sm:grid-cols-2"
         >
-          {SCENES.map((scene, i) => (
+          {FORTUNE_TYPES.map((type) => (
             <Link
-              key={scene.id}
-              href={`/fortune?scene=${scene.id}`}
+              key={type.id}
+              href={`/fortune?type=${type.id}`}
               className="group"
             >
               <motion.div
@@ -40,11 +40,11 @@ export default function HomePage() {
                 transition={{ duration: 0.2 }}
                 className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-all hover:border-indigo-200 hover:shadow-md"
               >
-                <span className="text-3xl">{scene.icon}</span>
+                <span className="text-3xl">{type.icon}</span>
                 <h3 className="mt-3 font-semibold text-slate-800">
-                  {scene.label}
+                  {type.label}
                 </h3>
-                <p className="mt-1 text-sm text-slate-500">{scene.desc}</p>
+                <p className="mt-1 text-sm text-slate-500">{type.desc}</p>
               </motion.div>
             </Link>
           ))}
